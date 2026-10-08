@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tebak-Tebakan Showdown 2P</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Outfit:wght@500;700;900&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            color: #ffffff;
+            touch-action: manipulation;
+            user-select: none;
+            overflow-x: hidden;
+            transition: background 0.6s ease, background-color 0.6s ease;
+        }
+
+        .font-fredoka {
+            font-family: 'Fredoka', cursive;
+        }
+
+        .glow-p1 {
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.45);
+            border-color: #22d3ee !important;
+        }
+
+        .glow-p2 {
+            box-shadow: 0 0 25px rgba(236, 72, 153, 0.45);
+            border-color: #f472b6 !important;
+        }
+
+        .text-glow-p1 {
+            text-shadow: 0 0 12px rgba(34, 211, 238, 0.7);
+        }
+
+        .text-glow-p2 {
+            text-shadow: 0 0 12px rgba(244, 114, 182, 0.7);
+        }
+
+        .btn-bounce {
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .btn-bounce:active {
+            transform: scale(0.93);
+        }
+
+        @keyframes activePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        .active-turn {
+            animation: activePulse 2s infinite ease-in-out;
+        }
+
+        /* Dynamic Animated Background Themes */
+        @keyframes bgGradMove {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        body.theme-pink {
+            background: linear-gradient(-45deg, #1a0314, #4c052e, #831843, #2d041c);
+            background-size: 400% 400%;
+            animation: bgGradMove 10s ease infinite;
+        }
+
+        body.theme-cyber {
+            background: linear-gradient(-45deg, #030712, #0f172a, #131b2e, #030712);
+            background-size: 400% 400%;
+            animation: bgGradMove 14s ease infinite;
+        }
+
+        body.theme-aurora {
+            background: linear-gradient(-45deg, #090514, #1e1b4b, #311042, #022c22);
+            background-size: 400% 400%;
+            animation: bgGradMove 12s ease infinite;
+        }
+
+        body.theme-sunset {
+            background: linear-gradient(-45deg, #180e29, #3b0764, #701a75, #4c0519);
+            background-size: 400% 400%;
+            animation: bgGradMove 10s ease infinite;
+        }
+
+        /* Floating Ambient Background Blobs */
+        .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.45;
+            pointer-events: none;
+            z-index: 0;
+            animation: floatBlob 10s infinite alternate ease-in-out;
+        }
+        .bg-blob-1 {
+            width: 380px;
+            height: 380px;
+            background: #ec4899;
+            top: -120px;
+            left: -120px;
+        }
+        .bg-blob-2 {
+            width: 400px;
+            height: 400px;
+            background: #f43f5e;
+            bottom: -120px;
+            right: -120px;
+            animation-delay: -5s;
+        }
+        .bg-blob-3 {
+            width: 320px;
+            height: 320px;
+            background: #d946ef;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: -2.5s;
+        }
+
+        @keyframes floatBlob {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(45px, 35px) scale(1.15); }
+        }
+
+        #particleCanvas {
+            pointer-events: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="theme-pink min-h-screen w-screen flex flex-col justify-between items-center p-3 sm:p-6 relative overflow-hidden">
+
+    <div class="bg-blob bg-blob-1"></div>
+    <div class="bg-blob bg-blob-2"></div>
+    <div class="bg-blob bg-blob-3"></div>
+
+    <canvas id="particleCanvas"></canvas>
+
+    <header class="w-full max-w-4xl flex items-center justify-between bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-3xl p-3 px-4 sm:px-6 shadow-2xl z-10">
+        <!-- Player 1 Score -->
+        <div id="card-p1" class="flex items-center gap-3 p-2 px-3 sm:px-4 rounded-2xl border border-slate-800 transition-all duration-300">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center text-cyan-400 font-extrabold text-xl font-fredoka shadow-lg">
+                P1
+            </div>
+            <div>
+                <div class="text-[10px] sm:text-xs text-cyan-400 font-bold uppercase tracking-wider" id="name-display-p1">PEMAIN 1</div>
+                <div id="score-p1" class="text-2xl sm:text-4xl font-black text-cyan-400 text-glow-p1 font-fredoka">0</div>
+            </div>
+        </div>
+
+        <!-- Center Turn Info -->
+        <div class="text-center px-2">
+            <div id="round-indicator" class="text-xs sm:text-sm font-bold text-slate-400 font-fredoka uppercase tracking-widest mb-1">
+                SOAL 1 / 10
+            </div>
+            <div id="turn-badge" class="px-3 py-1 rounded-full text-xs sm:text-sm font-extrabold tracking-wider uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-md">
+                GILIRAN P1
+            </div>
+        </div>
+
+        <!-- Player 2 Score -->
+        <div id="card-p2" class="flex items-center gap-3 p-2 px-3 sm:px-4 rounded-2xl border border-slate-800 transition-all duration-300 text-right">
+            <div>
+                <div class="text-[10px] sm:text-xs text-pink-400 font-bold uppercase tracking-wider" id="name-display-p2">PEMAIN 2</div>
+                <div id="score-p2" class="text-2xl sm:text-4xl font-black text-pink-400 text-glow-p2 font-fredoka">0</div>
+            </div>
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-pink-500/20 border-2 border-pink-400 flex items-center justify-center text-pink-400 font-extrabold text-xl font-fredoka shadow-lg">
+                P2
+            </div>
+        </div>
+    </header>
+
+    <main class="w-full max-w-4xl my-3 flex-1 flex flex-col justify-center items-center relative z-10">
+        <div id="game-stage" class="w-full bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-5 sm:p-8 shadow-2xl flex flex-col justify-between items-center relative overflow-hidden transition-all">
+            
+            <!-- Category & Timer -->
+            <div class="w-full flex items-center justify-between mb-4">
+                <span id="category-badge" class="px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold tracking-wide flex items-center gap-1.5">
+                    <i class="fa-solid fa-lightbulb"></i> TEBAK-TEBAKAN LUCU
+                </span>
+                
+                <div id="timer-container" class="flex items-center gap-2">
+                    <i class="fa-solid fa-stopwatch text-amber-400"></i>
+                    <span id="timer-text" class="text-sm font-bold font-fredoka text-amber-400">15s</span>
+                </div>
+            </div>
+
+            <!-- Question Box -->
+            <div class="w-full text-center my-4 sm:my-6 min-h-[100px] flex items-center justify-center px-2">
+                <h2 id="question-text" class="text-xl sm:text-3xl font-extrabold text-slate-100 leading-snug font-fredoka tracking-wide">
+                    "Memuat soal tebak-tebakan..."
+                </h2>
+            </div>
+
+            <!-- Timer Progress Line -->
+            <div class="w-full bg-slate-800 h-2 rounded-full mb-6 overflow-hidden">
+                <div id="timer-bar" class="h-full bg-gradient-to-r from-cyan-400 via-indigo-400 to-pink-500 w-full transition-all duration-1000 ease-linear"></div>
+            </div>
+
+            <!-- Choice Grid Mode -->
+            <div id="choice-grid" class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <!-- Dynamically populated choices -->
+            </div>
+
+            <!-- Classic Pass & Play Mode -->
+            <div id="classic-reveal-area" class="w-full hidden flex flex-col items-center gap-4">
+                <div id="revealed-answer-box" class="w-full p-4 bg-slate-950/80 border border-slate-800 rounded-2xl text-center hidden">
+                    <div class="text-xs text-slate-400 font-semibold mb-1">JAWABAN BENAR:</div>
+                    <div id="revealed-answer-text" class="text-2xl font-black text-emerald-400 font-fredoka">-</div>
+                </div>
+
+                <div class="flex flex-wrap gap-3 w-full justify-center">
+                    <button id="btn-reveal" onclick="revealClassicAnswer()" class="btn-bounce flex-1 min-w-[200px] py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold font-fredoka rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-eye"></i> BUKA JAWABAN
+                    </button>
+                    <div id="classic-decision-btns" class="hidden flex-1 flex gap-3 min-w-[240px]">
+                        <button onclick="gradeClassicAnswer(true)" class="btn-bounce flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black font-fredoka rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-circle-check text-lg"></i> TEBAKAN BENAR
+                        </button>
+                        <button onclick="gradeClassicAnswer(false)" class="btn-bounce flex-1 py-3.5 bg-rose-500 hover:bg-rose-400 text-white font-black font-fredoka rounded-2xl shadow-lg shadow-rose-500/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-circle-xmark text-lg"></i> SALAH
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="menu-modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-lg flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl text-center relative overflow-hidden">
+            <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-tr from-cyan-500 to-pink-500 rounded-3xl flex items-center justify-center text-3xl shadow-lg shadow-cyan-500/20 text-slate-950">
+                <i class="fa-solid fa-comments"></i>
+            </div>
+            
+            <h1 class="text-3xl sm:text-4xl font-black font-fredoka text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-pink-400 mb-2">
+                TEBAK-TEBAKAN 2P
+            </h1>
+            <p class="text-slate-400 text-xs sm:text-sm mb-6">
+                Duel teka-teki & plesetan terlucu! Mainkan bersama temanmu bergantian di satu layar.
+            </p>
+
+            <div class="mb-5 text-left">
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Pilih Mode Permainan:</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="mode-btn-choice" onclick="selectGameMode('choice')" class="p-3 bg-slate-800 border-2 border-cyan-400 rounded-2xl text-left transition-all">
+                        <div class="text-cyan-400 text-lg mb-1"><i class="fa-solid fa-list-check"></i></div>
+                        <div class="font-fredoka font-bold text-white text-sm">Pilihan Ganda</div>
+                        <div class="text-[11px] text-slate-400 leading-tight">Jawab cepat pilih 1 dari 4 pilihan!</div>
+                    </button>
+                    <button id="mode-btn-classic" onclick="selectGameMode('classic')" class="p-3 bg-slate-800 border-2 border-slate-700 rounded-2xl text-left transition-all">
+                        <div class="text-pink-400 text-lg mb-1"><i class="fa-solid fa-comment-dots"></i></div>
+                        <div class="font-fredoka font-bold text-white text-sm">Buka Jawaban</div>
+                        <div class="text-[11px] text-slate-400 leading-tight">Tebak lisan, lalu buka kunci jawaban.</div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-6 grid grid-cols-2 gap-3 text-left">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Jumlah Soal:</label>
+                    <select id="setting-rounds" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs font-bold font-fredoka text-slate-200 outline-none focus:border-cyan-400">
+                        <option value="6">6 Soal (3 Ronde)</option>
+                        <option value="10" selected>10 Soal (5 Ronde)</option>
+                        <option value="16">16 Soal (8 Ronde)</option>
+                        <option value="20">20 Soal (10 Ronde)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Waktu Jawab:</label>
+                    <select id="setting-timer" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs font-bold font-fredoka text-slate-200 outline-none focus:border-cyan-400">
+                        <option value="10">10 Detik (Cepat)</option>
+                        <option value="15" selected>15 Detik (Sedang)</option>
+                        <option value="25">25 Detik (Santai)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="startMatch()" class="btn-bounce w-full py-4 bg-gradient-to-r from-cyan-400 via-indigo-500 to-pink-500 hover:from-cyan-300 hover:to-pink-400 text-slate-950 font-black font-fredoka text-lg tracking-wider rounded-2xl shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2">
+                MULAI DUEL TEBAKAN <i class="fa-solid fa-play"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-lg flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl text-center relative overflow-hidden">
+            <div id="winner-crown" class="w-20 h-20 mx-auto mb-3 bg-amber-400/20 border-2 border-amber-400 rounded-3xl flex items-center justify-center text-4xl text-amber-400 shadow-lg shadow-amber-400/20">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <div id="winner-subtitle" class="text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-1">
+                PERTANDINGAN SELESAI
+            </div>
+            
+            <h2 id="winner-title" class="text-3xl sm:text-5xl font-black font-fredoka text-cyan-400 text-glow-p1 mb-6">
+                PEMAIN 1 MENANG!
+            </h2>
+
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-slate-800/60 border border-cyan-500/30 p-3 rounded-2xl">
+                    <div class="text-xs font-bold text-cyan-400 uppercase">PEMAIN 1</div>
+                    <div id="final-score-p1" class="text-3xl font-black font-fredoka text-white">0</div>
+                </div>
+                <div class="bg-slate-800/60 border border-pink-500/30 p-3 rounded-2xl">
+                    <div class="text-xs font-bold text-pink-400 uppercase">PEMAIN 2</div>
+                    <div id="final-score-p2" class="text-3xl font-black font-fredoka text-white">0</div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="restartMatch()" class="btn-bounce flex-1 py-3.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black font-fredoka rounded-2xl shadow-lg shadow-cyan-400/20">
+                    MAIN LAGI <i class="fa-solid fa-rotate-right ml-1"></i>
+                </button>
+                <button onclick="openMenu()" class="btn-bounce flex-1 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-black font-fredoka rounded-2xl border border-slate-700">
+                    MENU UTAMA <i class="fa-solid fa-house ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="w-full max-w-4xl flex items-center justify-between text-xs text-slate-400 px-2 pt-2 z-10 gap-2 flex-wrap sm:flex-nowrap">
+        <div class="flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-pink-400 animate-pulse"></span>
+            <span>2 Player Pass & Play Duel</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="changeBackground()" id="bg-toggle-btn" class="hover:text-white transition flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl font-fredoka text-slate-300">
+                <i class="fa-solid fa-palette text-pink-400"></i> <span id="bg-theme-name">Tema: Neon Pink</span>
+            </button>
+            <button onclick="toggleAudio()" id="audio-toggle-btn" class="hover:text-white transition flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl font-fredoka text-slate-300">
+                <i class="fa-solid fa-volume-high text-cyan-400"></i> Suara: ON
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        const BG_THEMES = [
+            { id: 'theme-pink', name: 'Neon Pink' },
+            { id: 'theme-cyber', name: 'Cyber' },
+            { id: 'theme-aurora', name: 'Aurora' },
+            { id: 'theme-sunset', name: 'Sunset' }
+        ];
+        let currentThemeIndex = 0;
+
+        function changeBackground() {
+            document.body.classList.remove(BG_THEMES[currentThemeIndex].id);
+            currentThemeIndex = (currentThemeIndex + 1) % BG_THEMES.length;
+            const newTheme = BG_THEMES[currentThemeIndex];
+            document.body.classList.add(newTheme.id);
+            document.getElementById('bg-theme-name').innerText = `Tema: ${newTheme.name}`;
+            if (audio) audio.playTurnChange();
+        }
+
+        /* Web Audio API Sound Synthesizer */
+        class QuizSoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playCorrect() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const freqs = [523.25, 659.25, 783.99, 1046.50];
+                freqs.forEach((f, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, now + i * 0.08);
+
+                    gain.gain.setValueAtTime(0.2, now + i * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.3);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now + i * 0.08);
+                    osc.stop(now + i * 0.08 + 0.3);
+                });
+            }
+
+            playWrong() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.25);
+
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+
+            playTurnChange() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            playWinFanfare() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const notes = [440, 554.37, 659.25, 880];
+                notes.forEach((f, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(f, now + i * 0.12);
+
+                    gain.gain.setValueAtTime(0.15, now + i * 0.12);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now + i * 0.12);
+                    osc.stop(now + i * 0.12 + 0.4);
+                });
+            }
+        }
+
+        const audio = new QuizSoundEngine();
+
+        const RIDDLES_DATABASE = [
+            {
+                question: "Benda apa yang kalau dipotong malah makin tinggi?",
+                answer: "Celana",
+                options: ["Pohon pisang", "Celana", "Rumput", "Pensil"],
+                category: "TEBAK-TEBAKAN LUCU"
+            },
+            {
+                question: "Pohon apa yang kalau disiram air malah mati?",
+                answer: "Pohon pisang goreng",
+                options: ["Pohon mangga", "Pohon cabai", "Pohon pisang goreng", "Pohon kelapa"],
+                category: "TEBAK-TEBAKAN LUCU"
+            },
+            {
+                question: "Ada berapa huruf dalam abjad?",
+                answer: "Ada 5 (A-B-J-A-D)",
+                options: ["26 huruf", "Ada 5 (A-B-J-A-D)", "21 huruf", "10 huruf"],
+                category: "ASAH OTAK LOGIKA"
+            },
+            {
+                question: "Ayam apa yang ukurannya paling besar di dunia?",
+                answer: "Ayam Semesta",
+                options: ["Ayam Bangkok", "Ayam Semesta", "Ayam Kalkun", "Ayam Kampung"],
+                category: "PLESETAN GOKIL"
+            },
+            {
+                question: "Lemari apa yang bisa masuk ke dalam kantong celana?",
+                answer: "Lemaribuan",
+                options: ["Lemari es", "Lemaribuan", "Lemari plastik", "Lemari mini"],
+                category: "PLESETAN GOKIL"
+            },
+            {
+                question: "Kenapa burung terbang ke arah selatan saat musim dingin?",
+                answer: "Karena kalau jalan kejauhan",
+                options: ["Cari makanan", "Karena kalau jalan kejauhan", "Suka udara hangat", "Ikut angin"],
+                category: "TEBAK-TEBAKAN LUCU"
+            },
+            {
+                question: "Buah apa yang kalau dipotong tetap bulat?",
+                answer: "Buah naga (dalam ingatan)",
+                options: ["Buah melon", "Buah apel", "Buah naga", "Buah semangka"],
+                category: "ASAH OTAK LOGIKA"
+            },
+            {
+                question: "Gajah apa yang belalainya pendek?",
+                answer: "Gajah yang kena flu",
+                options: ["Gajah bayi", "Gajah Lampung", "Gajah yang kena flu", "Gajah kerdil"],
+                category: "PLESETAN GOKIL"
+            },
+            {
+                question: "Kipas apa yang paling ditunggu-tunggu cewek?",
+                answer: "Kipastian",
+                options: ["Kipas angin", "Kipastian", "Kipas sate", "Kipas lipat"],
+                category: "TEBAK-TEBAKAN LUCU"
+            },
+            {
+                question: "Ban apa yang rasanya gurih dan enak dimakan?",
+                answer: "Bandeng",
+                options: ["Ban mobil", "Bandeng", "Bantet", "Ban dalam"],
+                category: "PLESETAN GOKIL"
+            },
+            {
+                question: "Pintu apa yang tidak bisa didorong atau ditarik walaupun 10 orang?",
+                answer: "Pintu geser",
+                options: ["Pintu besi", "Pintu geser", "Pintu gerbang", "Pintu rahasia"],
+                category: "ASAH OTAK LOGIKA"
+            },
+            {
+                question: "Sapi apa yang bisa memanjat dinding rumah?",
+                answer: "Sapider-man",
+                options: ["Sapi perah", "Sapider-man", "Sapi perah", "Sapi gila"],
+                category: "PLESETAN GOKIL"
+            },
+            {
+                question: "Nasi apa yang nggak pernah bisa kita makan?",
+                answer: "Nasihat",
+                options: ["Nasi goreng", "Nasi basi", "Nasihat", "Nasi uduk"],
+                category: "TEBAK-TEBAKAN LUCU"
+            },
+            {
+                question: "Penyanyi luar negeri yang hobi naik sepeda ontel?",
+                answer: "Selena Gemes (Selena Gomez)",
+                options: ["Bruno Mars", "Justin Bieber", "Selena Gomez", "Taylor Swift"],
+                category: "PLESETAN GOKIL"
+            },
+            {
+                question: "Buah apa yang paling ditakuti sama siswa sekolah?",
+                answer: "Buah-nyak tugas",
+                options: ["Buah durian", "Buah-nyak tugas", "Buah nangka", "Buah pisang"],
+                category: "TEBAK-TEBAKAN LUCU"
+            },
+            {
+                question: "Sesuatu yang makin dikejar makin menjauh, apakah itu?",
+                answer: "Bayangan",
+                options: ["Waktu", "Bayangan", "Mimpi", "Angin"],
+                category: "ASAH OTAK LOGIKA"
+            },
+            {
+                question: "Ikan apa yang matanya banyak sekali?",
+                answer: "Ikan sekeranjang",
+                options: ["Ikan paus", "Ikan sekeranjang", "Ikan hiu", "Ikan mas"],
+                category: "TEBAK-TEBAKAN LUCU"
+            },
+            {
+                question: "Batu apa yang paling berat di dunia?",
+                answer: "Batuun (Bantuan) pemerintah",
+                options: ["Batu kali", "Batu karang", "Batuun pemerintah", "Batu akik"],
+                category: "PLESETAN GOKIL"
+            },
+            {
+                question: "Kendaraan apa yang paling hemat energi di dunia?",
+                answer: "Kereta api (karena rodanya banyak tapi jalannya di rel)",
+                options: ["Sepeda listrik", "Kereta api", "Mobil surya", "Skuter"],
+                category: "ASAH OTAK LOGIKA"
+            },
+            {
+                question: "Kucing apa yang paling kuno di dunia?",
+                answer: "Kucing-galan zaman",
+                options: ["Kucing Persia", "Kucing Anggora", "Kucing-galan zaman", "Kucing Hutan"],
+                category: "PLESETAN GOKIL"
+            }
+        ];
+
+        /* Game State Variables */
+        let currentGameMode = 'choice';
+        let totalQuestionsConfig = 10;
+        let timerSecondsConfig = 15;
+
+        let activeQuestionsQueue = [];
+        let currentQuestionIndex = 0;
+        let activePlayer = 1;
+        let scoreP1 = 0;
+        let scoreP2 = 0;
+
+        let timerInterval = null;
+        let timeRemaining = 0;
+        let isAnsweringLocked = false;
+
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function createConfetti(x, y, count = 40) {
+            const colors = ['#22d3ee', '#f472b6', '#a855f7', '#facc15', '#34d399'];
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 3;
+                particles.push({
+                    x: x || canvas.width / 2,
+                    y: y || canvas.height / 2,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 2,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 60 + Math.random() * 30,
+                    rotation: Math.random() * 360,
+                    vRot: (Math.random() - 0.5) * 10
+                });
+            }
+        }
+
+        function updateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15;
+                p.life--;
+                p.rotation += p.vRot;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                ctx.restore();
+
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+            requestAnimationFrame(updateParticles);
+        }
+        updateParticles();
+
+        function selectGameMode(mode) {
+            currentGameMode = mode;
+            const btnChoice = document.getElementById('mode-btn-choice');
+            const btnClassic = document.getElementById('mode-btn-classic');
+
+            if (mode === 'choice') {
+                btnChoice.className = "p-3 bg-slate-800 border-2 border-cyan-400 rounded-2xl text-left transition-all";
+                btnClassic.className = "p-3 bg-slate-800 border-2 border-slate-700 rounded-2xl text-left transition-all";
+            } else {
+                btnClassic.className = "p-3 bg-slate-800 border-2 border-pink-400 rounded-2xl text-left transition-all";
+                btnChoice.className = "p-3 bg-slate-800 border-2 border-slate-700 rounded-2xl text-left transition-all";
+            }
+        }
+
+        function startMatch() {
+            totalQuestionsConfig = parseInt(document.getElementById('setting-rounds').value);
+            timerSecondsConfig = parseInt(document.getElementById('setting-timer').value);
+
+            activeQuestionsQueue = [...RIDDLES_DATABASE].sort(() => Math.random() - 0.5);
+            while (activeQuestionsQueue.length < totalQuestionsConfig) {
+                activeQuestionsQueue = activeQuestionsQueue.concat([...RIDDLES_DATABASE].sort(() => Math.random() - 0.5));
+            }
+            activeQuestionsQueue = activeQuestionsQueue.slice(0, totalQuestionsConfig);
+
+            currentQuestionIndex = 0;
+            scoreP1 = 0;
+            scoreP2 = 0;
+            activePlayer = 1;
+
+            updateScoreboard();
+            document.getElementById('menu-modal').classList.add('hidden');
+            document.getElementById('game-over-modal').classList.add('hidden');
+
+            loadQuestion();
+        }
+
+        function openMenu() {
+            clearInterval(timerInterval);
+            document.getElementById('game-over-modal').classList.add('hidden');
+            document.getElementById('menu-modal').classList.remove('hidden');
+        }
+
+        function restartMatch() {
+            startMatch();
+        }
+
+        function toggleAudio() {
+            audio.muted = !audio.muted;
+            document.getElementById('audio-toggle-btn').innerHTML = audio.muted ?
+                '<i class="fa-solid fa-volume-xmark text-slate-500"></i> Suara: OFF' :
+                '<i class="fa-solid fa-volume-high text-cyan-400"></i> Suara: ON';
+        }
+
+        function updateScoreboard() {
+            document.getElementById('score-p1').innerText = scoreP1;
+            document.getElementById('score-p2').innerText = scoreP2;
+
+            const cardP1 = document.getElementById('card-p1');
+            const cardP2 = document.getElementById('card-p2');
+            const turnBadge = document.getElementById('turn-badge');
+
+            if (activePlayer === 1) {
+                cardP1.className = "flex items-center gap-3 p-2 px-3 sm:px-4 rounded-2xl border bg-cyan-950/40 glow-p1 active-turn transition-all duration-300";
+                cardP2.className = "flex items-center gap-3 p-2 px-3 sm:px-4 rounded-2xl border border-slate-800 opacity-60 transition-all duration-300 text-right";
+                turnBadge.className = "px-3 py-1 rounded-full text-xs sm:text-sm font-extrabold tracking-wider uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-md";
+                turnBadge.innerText = "GILIRAN P1";
+            } else {
+                cardP2.className = "flex items-center gap-3 p-2 px-3 sm:px-4 rounded-2xl border bg-pink-950/40 glow-p2 active-turn transition-all duration-300 text-right";
+                cardP1.className = "flex items-center gap-3 p-2 px-3 sm:px-4 rounded-2xl border border-slate-800 opacity-60 transition-all duration-300";
+                turnBadge.className = "px-3 py-1 rounded-full text-xs sm:text-sm font-extrabold tracking-wider uppercase bg-pink-500/20 text-pink-300 border border-pink-400/50 shadow-md";
+                turnBadge.innerText = "GILIRAN P2";
+            }
+
+            document.getElementById('round-indicator').innerText = `SOAL ${currentQuestionIndex + 1} / ${totalQuestionsConfig}`;
+        }
+
+        function loadQuestion() {
+            if (currentQuestionIndex >= totalQuestionsConfig) {
+                endGame();
+                return;
+            }
+
+            isAnsweringLocked = false;
+            updateScoreboard();
+
+            const currentQ = activeQuestionsQueue[currentQuestionIndex];
+            document.getElementById('category-badge').innerHTML = `<i class="fa-solid fa-lightbulb"></i> ${currentQ.category}`;
+            document.getElementById('question-text').innerText = `"${currentQ.question}"`;
+
+            const choiceGrid = document.getElementById('choice-grid');
+            const classicArea = document.getElementById('classic-reveal-area');
+            const revealedAnswerBox = document.getElementById('revealed-answer-box');
+            const classicDecisionBtns = document.getElementById('classic-decision-btns');
+            const btnReveal = document.getElementById('btn-reveal');
+
+            if (currentGameMode === 'choice') {
+                choiceGrid.classList.remove('hidden');
+                classicArea.classList.add('hidden');
+                
+                const shuffledOpts = [...currentQ.options].sort(() => Math.random() - 0.5);
+                choiceGrid.innerHTML = '';
+
+                shuffledOpts.forEach((optText, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = "btn-bounce w-full p-4 bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/80 rounded-2xl text-left font-bold font-fredoka text-sm sm:text-base text-slate-100 flex items-center justify-between group transition-all shadow-md";
+                    btn.onclick = () => submitChoiceAnswer(optText, currentQ.answer, btn);
+                    
+                    const letters = ['A', 'B', 'C', 'D'];
+                    btn.innerHTML = `
+                        <span class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 group-hover:border-slate-500 flex items-center justify-center text-xs font-black text-slate-400 group-hover:text-white transition">
+                                ${letters[i]}
+                            </span>
+                            <span>${optText}</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right text-xs opacity-0 group-hover:opacity-100 transition text-slate-400"></i>
+                    `;
+                    choiceGrid.appendChild(btn);
+                });
+            } else {
+                choiceGrid.classList.add('hidden');
+                classicArea.classList.remove('hidden');
+                revealedAnswerBox.classList.add('hidden');
+                classicDecisionBtns.classList.add('hidden');
+                btnReveal.classList.remove('hidden');
+                document.getElementById('revealed-answer-text').innerText = currentQ.answer;
+            }
+
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeRemaining = timerSecondsConfig;
+            updateTimerUI();
+
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerUI();
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeOut();
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            document.getElementById('timer-text').innerText = `${timeRemaining}s`;
+            const percentage = (timeRemaining / timerSecondsConfig) * 100;
+            document.getElementById('timer-bar').style.width = `${percentage}%`;
+        }
+
+        function submitChoiceAnswer(selectedOption, correctAnswer, btnElement) {
+            if (isAnsweringLocked) return;
+            isAnsweringLocked = true;
+            clearInterval(timerInterval);
+
+            if (selectedOption === correctAnswer) {
+                btnElement.classList.remove('bg-slate-800/90', 'border-slate-700/80');
+                btnElement.classList.add('bg-emerald-500/20', 'border-emerald-400', 'text-emerald-300');
+                audio.playCorrect();
+                createConfetti();
+
+                if (activePlayer === 1) scoreP1 += 10;
+                else scoreP2 += 10;
+            } else {
+                btnElement.classList.remove('bg-slate-800/90', 'border-slate-700/80');
+                btnElement.classList.add('bg-rose-500/20', 'border-rose-400', 'text-rose-300');
+                audio.playWrong();
+
+                const allButtons = document.querySelectorAll('#choice-grid button');
+                allButtons.forEach(b => {
+                    if (b.innerText.includes(correctAnswer)) {
+                        b.classList.add('bg-emerald-500/20', 'border-emerald-400', 'text-emerald-300');
+                    }
+                });
+            }
+
+            setTimeout(advanceTurn, 1500);
+        }
+
+        function handleTimeOut() {
+            if (isAnsweringLocked) return;
+            isAnsweringLocked = true;
+            audio.playWrong();
+
+            if (currentGameMode === 'choice') {
+                const currentQ = activeQuestionsQueue[currentQuestionIndex];
+                const allButtons = document.querySelectorAll('#choice-grid button');
+                allButtons.forEach(b => {
+                    if (b.innerText.includes(currentQ.answer)) {
+                        b.classList.add('bg-emerald-500/20', 'border-emerald-400', 'text-emerald-300');
+                    }
+                });
+            }
+
+            setTimeout(advanceTurn, 1500);
+        }
+
+        function revealClassicAnswer() {
+            document.getElementById('revealed-answer-box').classList.remove('hidden');
+            document.getElementById('btn-reveal').classList.add('hidden');
+            document.getElementById('classic-decision-btns').classList.remove('hidden');
+            clearInterval(timerInterval);
+        }
+
+        function gradeClassicAnswer(isCorrect) {
+            if (isAnsweringLocked) return;
+            isAnsweringLocked = true;
+
+            if (isCorrect) {
+                audio.playCorrect();
+                createConfetti();
+                if (activePlayer === 1) scoreP1 += 10;
+                else scoreP2 += 10;
+            } else {
+                audio.playWrong();
+            }
+
+            advanceTurn();
+        }
+
+        function advanceTurn() {
+            currentQuestionIndex++;
+            activePlayer = activePlayer === 1 ? 2 : 1;
+            audio.playTurnChange();
+            loadQuestion();
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            audio.playWinFanfare();
+            createConfetti(canvas.width / 2, canvas.height / 2, 100);
+
+            document.getElementById('final-score-p1').innerText = scoreP1;
+            document.getElementById('final-score-p2').innerText = scoreP2;
+
+            const winnerTitle = document.getElementById('winner-title');
+            const winnerSubtitle = document.getElementById('winner-subtitle');
+
+            if (scoreP1 > scoreP2) {
+                winnerTitle.innerText = "PEMAIN 1 MENANG!";
+                winnerTitle.className = "text-3xl sm:text-5xl font-black font-fredoka text-cyan-400 text-glow-p1 mb-6";
+                winnerSubtitle.innerText = "SELAMAT ATAS KEMENANGAN KELAS DUNIA!";
+            } else if (scoreP2 > scoreP1) {
+                winnerTitle.innerText = "PEMAIN 2 MENANG!";
+                winnerTitle.className = "text-3xl sm:text-5xl font-black font-fredoka text-pink-400 text-glow-p2 mb-6";
+                winnerSubtitle.innerText = "SELAMAT ATAS KEMENANGAN KELAS DUNIA!";
+            } else {
+                winnerTitle.innerText = "HASIL SERI!";
+                winnerTitle.className = "text-3xl sm:text-5xl font-black font-fredoka text-amber-400 mb-6";
+                winnerSubtitle.innerText = "SKOR SAMA KUAT, DUEL SANGAT SENGIT!";
+            }
+
+            document.getElementById('game-over-modal').classList.remove('hidden');
+        }
+
+        window.onload = function() {
+            selectGameMode('choice');
+        };
+    </script>
+</body>
+</html>
